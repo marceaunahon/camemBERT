@@ -1,0 +1,29 @@
+This is the train file.
+This file contains sentences used for tokenization.
+I don't really know what sentence to write.
+We should perhaps look for a file with many sentences.
+But we can also write the sentences ourselves.
+Maybe I have to write differents things because I am using the same words over and over again.
+I think that the decision of letting Marco Verratti go was a big mistake.
+It is very disappointing that the Mbappé-Neymar era ended this way.
+Neymar was really amazing when he arrived, but he was not spared by the injuries.
+Thiago Silva was also fantastic, it is sad to see that he has not the recognition he deserves.
+I have to admit that I am nostalgic when I think about Laurent Blanc's PSG.
+I believe that we could have done way better in 2016.
+The team was really great.
+It makes me think about Serge Aurier, but if start talking about him I will never stop.
+The french horn is a wonderful instrument.
+In my opinion it is better than the trumpet for two reasons.
+First, the sound is smoother.
+And the french horn can also reach notes that the trumpet can't.
+It is also important to note that in many compositions, especially John William's, the french horn is often used to play the best parts.
+We talked about music enough, let us talk about something else.
+An idea of topic to talk about is Star Wars.
+The disney postology is very bad.
+Sorry for Rey's fans.
+But it is obvious that there was no real plan for the trilogy.
+We can find many defaults in the prelogy but there is a real progression from the phantom menace to the revenge of the sith.
+The phantom menace and attack of the clone are not the best movies ever.
+But what happens in these movies is very important for what comes next.
+It sets up both the rise of Palpatine, with him grabbing power over the movies, and Anakin's fall to the dark side.
+Maybe it is time for me to stop talking about these things and go back to the code.
