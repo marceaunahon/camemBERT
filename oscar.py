@@ -1,6 +1,8 @@
 from typing import Any
 from datasets import load_dataset
 import random
+import re
+
 
 class Oscar():
     def __init__(self, language="fr", split="train"):
@@ -24,18 +26,16 @@ class Oscar():
         return random.choice(self.dataset)
     
     def search_by_keyword(self, keyword: str) -> Any:
-        # Convert keyword to lowercase for case-insensitive search
-        keyword_lower = keyword.lower()
-
-        # Use a set to avoid duplicates
-        results = []
-
-        for d in self.dataset:
-            # Convert text to lowercase for case-insensitive search
-            text_lower = d["text"].lower()
-
-            # Check if the keyword is present in the lowercase text
-            if keyword_lower in text_lower:
-                results.append(d)
+        # Use a list comprehension to filter examples
+        results = [example for example in self.dataset if keyword in example["text"]]
 
         return results
+
+    def tokenize_text(self, text: str) -> Any:
+        # Tokenize the sentence
+        words = re.findall(r'\b\w+\b', text)
+
+        # Apply whole-word masking (WWM)
+        masked_sentence = ' '.join(['[MASK]' if random.random() < 0.15 else word for word in words])
+
+        return masked_sentence
