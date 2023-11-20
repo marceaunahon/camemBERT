@@ -33,8 +33,8 @@ class EncoderLayer(nn.Module):
 
     def forward(self, x : torch.Tensor) -> torch.Tensor:
         attn_output, attn_output_weights = self.multihead_attention_layer(x, x, x) #faut voir ce truc la, automatiquement copilot mais x,x,x c bizarre
-        x += attn_output
-        x += self.position_wise_fully_connected_feed_forward_layer(x)
+        x = attn_output
+        x = self.position_wise_fully_connected_feed_forward_layer(x)
 
         return x
 
@@ -52,7 +52,6 @@ class MultiHeadAttentionSubLayer(nn.Module):
     #Ducoup la faut voir ce que c'est query, key et value, c'est trop bien copilot autocompile mes doutes il est trop fort
     def forward(self, query : torch.Tensor, key : torch.Tensor, value : torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]: 
         attn_output, attn_output_weights = self.multihead_attention(query, key, value)
-        attn_output = self.layer_norm(attn_output)
         attn_output = self.layer_norm(attn_output)
         attn_output = self.dropout_layer(attn_output)
         return attn_output, attn_output_weights
