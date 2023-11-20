@@ -48,7 +48,7 @@ class MultiHeadAttentionSubLayer(nn.Module):
 
     #Ducoup la faut voir ce que c'est query, key et value, c'est trop bien copilot autocompile mes doutes il est trop fort
     def forward(self, query : torch.Tensor, key : torch.Tensor, value : torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]: 
-        attn_output, attn_output_weights = self.multihead_attention(query, key, value)
+        attn_output, attn_output_weights = self.multihead_attention(query, key, value) 
         attn_output = self.layer_norm(query + attn_output) 
         attn_output = self.dropout_layer(attn_output)
         return attn_output, attn_output_weights
@@ -101,5 +101,6 @@ class DecoderLayer(nn.Module):
         self.position_wise_fully_connected_feed_forward_layer = PositionWiseFullyConnectedFeedForwardSubLayer(embed_dim = self.embed_dim, dropout = self.dropout)
 
     def forward(self, x : torch.Tensor) -> torch.Tensor:
+        pass
         # à compléter
         # j'ai pas bien compris la figure 1 de l'article, jpense qu'une fois qu'on la capte bien ça ira tout seul
