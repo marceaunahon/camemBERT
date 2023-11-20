@@ -7,9 +7,8 @@ from typing import Tuple
 
 #Je suis pas trop sur, surtout pour les forwards
 
-
 class Encoder(nn.Module):  
-    def __init__(self, embed_dim : int = 768, num_heads : int = 12 , num_layers : int = 12, dropout : float = 0.1) -> None:
+    def __init__(self, embed_dim : int = 768, num_heads : int = 12 , num_layers : int = 6, dropout : float = 0.1) -> None:
         super(Encoder, self).__init__()
         self.embed_dim = embed_dim
         self.num_heads = num_heads
@@ -35,10 +34,8 @@ class EncoderLayer(nn.Module):
         attn_output, attn_output_weights = self.multihead_attention_layer(x, x, x) #faut voir ce truc la, automatiquement copilot mais x,x,x c bizarre
         x = attn_output
         x = self.position_wise_fully_connected_feed_forward_layer(x)
-
         return x
-
-        
+   
 class MultiHeadAttentionSubLayer(nn.Module):
     def __init__(self, embed_dim : int, num_heads : int, dropout : float) -> None:
         super(MultiHeadAttentionSubLayer, self).__init__()
@@ -52,7 +49,7 @@ class MultiHeadAttentionSubLayer(nn.Module):
     #Ducoup la faut voir ce que c'est query, key et value, c'est trop bien copilot autocompile mes doutes il est trop fort
     def forward(self, query : torch.Tensor, key : torch.Tensor, value : torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]: 
         attn_output, attn_output_weights = self.multihead_attention(query, key, value)
-        attn_output = self.layer_norm(attn_output)
+        attn_output = self.layer_norm(query + attn_output) 
         attn_output = self.dropout_layer(attn_output)
         return attn_output, attn_output_weights
 
@@ -74,11 +71,35 @@ class PositionWiseFullyConnectedFeedForwardSubLayer(nn.Module):
         self.dropout_layer = nn.Dropout(self.dropout)
 
     def forward(self, x : torch.Tensor) -> torch.Tensor:
-        x = self.feed_forward(x)
-        x = self.layer_norm(x)
+        x = self.layer_norm(x + self.feed_forward(x)) 
         x = self.dropout_layer(x)
         return x
+    
 
-if __name__ == "__main__":
-    encoder = Encoder()
-    print(encoder)
+class Decoder(nn.Module):
+    def __init__(self, embed_dim : int = 768, num_heads : int = 12 , num_layers : int = 6, dropout : float = 0.1) -> None:
+        super(Decoder, self).__init__()
+        self.embed_dim = embed_dim
+        self.num_heads = num_heads
+        self.num_layers = num_layers
+        self.dropout = dropout
+        self.decoder_layers = nn.ModuleList([DecoderLayer(embed_dim, num_heads, dropout) for _ in range(num_layers)])
+
+    def forward(self, x : torch.Tensor) -> torch.Tensor:
+        for decoder_layer in self.decoder_layers:
+            x = decoder_layer(x)
+        return x
+    
+class DecoderLayer(nn.Module):
+    def __init__(self, embed_dim : int, num_heads : int, dropout : float) -> None:
+        super(DecoderLayer, self).__init__()
+        self.embed_dim = embed_dim
+        self.num_heads = num_heads
+        self.dropout = dropout
+        self.multihead_attention_layer = MultiHeadAttentionSubLayer(embed_dim = self.embed_dim, num_heads = self.num_heads, dropout = self.dropout)
+        self.encoder_decoder_attention_layer = MultiHeadAttentionSubLayer(embed_dim = self.embed_dim, num_heads = self.num_heads, dropout = self.dropout)
+        self.position_wise_fully_connected_feed_forward_layer = PositionWiseFullyConnectedFeedForwardSubLayer(embed_dim = self.embed_dim, dropout = self.dropout)
+
+    def forward(self, x : torch.Tensor) -> torch.Tensor:
+        # à compléter
+        # j'ai pas bien compris la figure 1 de l'article, jpense qu'une fois qu'on la capte bien ça ira tout seul
