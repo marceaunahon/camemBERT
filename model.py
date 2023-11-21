@@ -9,14 +9,23 @@ from typing import Tuple
 
 
 class Transformer(nn.Module):
-    def __init__(self, encoder : nn.Module, decoder : nn.Module, input : torch.Tensor) -> None:
+    def __init__(self, embed_dim : int = 768, num_heads : int = 12, num_layers : int = 6, dropout : float = 0.1) -> None:
         super(Transformer, self).__init__()
-        self.encoder = encoder
-        self.decoder = decoder
-        self.input = input
+        self.embed_dim = embed_dim
+        self.num_heads = num_heads
+        self.num_layers = num_layers
+        self.dropout = dropout
+        self.encoder = Encoder(embed_dim = self.embed_dim, num_heads = self.num_heads, num_layers = self.num_layers, dropout = self.dropout)
+        self.decoder = Decoder(embed_dim = self.embed_dim, num_heads = self.num_heads, num_layers = self.num_layers, dropout = self.dropout, encoder_output=self.encoder(input))
+        self.linear = nn.Linear(in_features = self.embed_dim, out_features = self.embed_dim) #pas sur du tout la dessus j'ai mis au hasard
+        
 
     def forward(self, x : torch.Tensor) -> torch.Tensor:
-        pass
+        x = self.encoder(x)
+        x = self.decoder(x)
+        x = self.linear(x)
+        x = torch.softmax(x, dim = 1) #pareil pas sur du tout du dim = 1
+        return x
 
 class Encoder(nn.Module):  
     def __init__(self, embed_dim : int = 768, num_heads : int = 12 , num_layers : int = 6, dropout : float = 0.1) -> None:
@@ -121,3 +130,6 @@ class DecoderLayer(nn.Module):
         x = self.position_wise_fully_connected_feed_forward_layer(x)
         return x
     
+if __name__ == "__main__":
+    model = Transformer()
+    print(model)
