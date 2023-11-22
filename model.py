@@ -16,16 +16,18 @@ class Transformer(nn.Module):
         self.num_heads = num_heads
         self.num_layers = num_layers
         self.dropout = dropout
+        self.positional_encoding = PositionalEncoding(d_model = self.d_model)
         self.encoder = Encoder(d_model = self.d_model, num_heads = self.num_heads, num_layers = self.num_layers, dropout = self.dropout)
         self.decoder = Decoder(d_model = self.d_model, num_heads = self.num_heads, num_layers = self.num_layers, dropout = self.dropout)
         self.linear = nn.Linear(in_features = self.d_model, out_features = len(self.dictionnary)) 
         
 
-    def forward(self, input_embedding : torch.Tensor, output_encoding : torch.Tensor) -> torch.Tensor:
-        y = self.encoder(input_embedding)
+    def forward(self, input : torch.Tensor, output_encoding : torch.Tensor) -> torch.Tensor:
+        encoded_input = self.positional_encoding(input)
+        y = self.encoder(encoded_input)
         x = self.decoder(y, output_encoding)
         x = self.linear(x)
-        x = torch.softmax(x, dim = 1) #pareil pas sur du tout du dim = 1
+        x = torch.softmax(x, dim = 1)
         return x
 
 class PositionalEncoding(nn.Module):
@@ -155,5 +157,6 @@ class DecoderLayer(nn.Module):
         return x
     
 if __name__ == "__main__":
-    model = Transformer()
+    dictionnary = ["a", "b", "c"]
+    model = Transformer(dictionnary)
     print(model)
