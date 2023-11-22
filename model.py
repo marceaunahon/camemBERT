@@ -16,13 +16,13 @@ class Transformer(nn.Module):
         self.num_layers = num_layers
         self.dropout = dropout
         self.encoder = Encoder(embed_dim = self.embed_dim, num_heads = self.num_heads, num_layers = self.num_layers, dropout = self.dropout)
-        self.decoder = Decoder(embed_dim = self.embed_dim, num_heads = self.num_heads, num_layers = self.num_layers, dropout = self.dropout, encoder_output=self.encoder(input))
+        self.decoder = Decoder(embed_dim = self.embed_dim, num_heads = self.num_heads, num_layers = self.num_layers, dropout = self.dropout)
         self.linear = nn.Linear(in_features = self.embed_dim, out_features = self.embed_dim) #pas sur du tout la dessus j'ai mis au hasard
         
 
-    def forward(self, x : torch.Tensor) -> torch.Tensor:
-        x = self.encoder(x)
-        x = self.decoder(x)
+    def forward(self, input_embedding : torch.Tensor, output_encoding : torch.Tensor) -> torch.Tensor:
+        y = self.encoder(input_embedding)
+        x = self.decoder(y, output_encoding)
         x = self.linear(x)
         x = torch.softmax(x, dim = 1) #pareil pas sur du tout du dim = 1
         return x
@@ -104,28 +104,28 @@ class Decoder(nn.Module):
         self.num_layers = num_layers
         self.dropout = dropout
         self.encoder_output = encoder_output
-        self.decoder_layers = nn.ModuleList([DecoderLayer(self.embed_dim, self.num_heads, self.dropout, self.encoder_output) for _ in range(num_layers)])
+        self.decoder_layers = nn.ModuleList([DecoderLayer(self.embed_dim, self.num_heads, self.dropout) for _ in range(num_layers)])
 
-    def forward(self, x : torch.Tensor) -> torch.Tensor:
+    def forward(self, encoder_ouptut : torch.Tensor, output_embedding : torch.Tensor) -> torch.Tensor:
+        x = torch.Tensor()
         for decoder_layer in self.decoder_layers:
-            x = decoder_layer(x)
+            x = decoder_layer(encoder_ouptut, output_embedding)
         return x
     
 class DecoderLayer(nn.Module):
-    def __init__(self, embed_dim : int, num_heads : int, dropout : float, encoder_output : torch.Tensor) -> None:
+    def __init__(self, embed_dim : int, num_heads : int, dropout : float) -> None:
         super(DecoderLayer, self).__init__()
         self.embed_dim = embed_dim
         self.num_heads = num_heads
         self.dropout = dropout
-        self.encoder_output = encoder_output
         self.mask_multihead_attention_layer = MultiHeadAttentionSubLayer(embed_dim = self.embed_dim, num_heads = self.num_heads, dropout = self.dropout) #voir la diff entre les deux attention
         self.multihead_attention_layer = MultiHeadAttentionSubLayer(embed_dim = self.embed_dim, num_heads = self.num_heads, dropout = self.dropout)
         self.position_wise_fully_connected_feed_forward_layer = PositionWiseFullyConnectedFeedForwardSubLayer(embed_dim = self.embed_dim, dropout = self.dropout)
 
-    def forward(self, x : torch.Tensor) -> torch.Tensor:
-        attn_output, attn_output_weights = self.multihead_attention_layer(x, x, x)
+    def forward(self, encoder_output : torch.Tensor, output_embedding : torch.Tensor) -> torch.Tensor:
+        attn_output, attn_output_weights = self.mask_multihead_attention_layer(output_embedding, output_embedding, output_embedding)
         x = attn_output
-        attn2_output, attn2_output_weights = self.mask_multihead_attention_layer(self.encoder_output, self.encoder_output, x)
+        attn2_output, attn2_output_weights = self.multihead_attention_layer(encoder_output, encoder_output, x)
         x = attn2_output
         x = self.position_wise_fully_connected_feed_forward_layer(x)
         return x
