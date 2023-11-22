@@ -86,7 +86,7 @@ class MultiHeadAttentionSubLayer(nn.Module):
         self.d_model = d_model
         self.num_heads = num_heads
         self.dropout = dropout
-        self.multihead_attention = nn.MultiheadAttention(d_model = self.d_model, num_heads = self.num_heads)
+        self.multihead_attention = nn.MultiheadAttention(embed_dim = self.d_model, num_heads = self.num_heads)
         self.layer_norm = nn.LayerNorm(self.d_model)
         self.dropout_layer = nn.Dropout(self.dropout)
 
