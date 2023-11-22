@@ -27,6 +27,24 @@ class Transformer(nn.Module):
         x = torch.softmax(x, dim = 1) #pareil pas sur du tout du dim = 1
         return x
 
+class PositionalEncoding(nn.Module):
+    def __init__(self, d_model:int=768, max_seq_len : int=100):
+        super().__init__()
+        self.d_model = d_model
+        self.max_seq_len = max_seq_len
+        #self.register_buffer('positional_encoding', self._get_positional_encoding())
+    
+    def forward(self):
+        even_i=torch.arange(0, self.d_model, 2).float()
+        donominator=torch.pow(10000, even_i/self.d_model)
+        position= torch.arange(self.max_seq_len).reshape(self.max_seq_len, 1)
+        even_position_encoding=torch.sin(position/donominator)
+        odd_position_encoding=torch.cos(position/donominator)
+        stacked_position=torch.stack([even_position_encoding, odd_position_encoding], dim=2) 
+        position_encoding=torch.flatten(stacked_position, start_dim=1, end_dim=2)
+        
+        return position_encoding
+    
 class Encoder(nn.Module):  
     def __init__(self, embed_dim : int = 768, num_heads : int = 12 , num_layers : int = 6, dropout : float = 0.1) -> None:
         super().__init__()
