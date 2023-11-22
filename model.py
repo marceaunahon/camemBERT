@@ -10,7 +10,7 @@ from typing import Tuple
 
 class Transformer(nn.Module):
     def __init__(self, embed_dim : int = 768, num_heads : int = 12, num_layers : int = 6, dropout : float = 0.1) -> None:
-        super(Transformer, self).__init__()
+        super().__init__()
         self.embed_dim = embed_dim
         self.num_heads = num_heads
         self.num_layers = num_layers
@@ -29,7 +29,7 @@ class Transformer(nn.Module):
 
 class Encoder(nn.Module):  
     def __init__(self, embed_dim : int = 768, num_heads : int = 12 , num_layers : int = 6, dropout : float = 0.1) -> None:
-        super(Encoder, self).__init__()
+        super().__init__()
         self.embed_dim = embed_dim
         self.num_heads = num_heads
         self.num_layers = num_layers
@@ -43,7 +43,7 @@ class Encoder(nn.Module):
 
 class EncoderLayer(nn.Module):
     def __init__(self, embed_dim : int, num_heads : int, dropout : float) -> None:
-        super(EncoderLayer, self).__init__()
+        super().__init__()
         self.embed_dim = embed_dim
         self.num_heads = num_heads
         self.dropout = dropout
@@ -58,7 +58,7 @@ class EncoderLayer(nn.Module):
    
 class MultiHeadAttentionSubLayer(nn.Module):
     def __init__(self, embed_dim : int, num_heads : int, dropout : float) -> None:
-        super(MultiHeadAttentionSubLayer, self).__init__()
+        super().__init__()
         self.embed_dim = embed_dim
         self.num_heads = num_heads
         self.dropout = dropout
@@ -75,7 +75,7 @@ class MultiHeadAttentionSubLayer(nn.Module):
 
 class PositionWiseFullyConnectedFeedForwardSubLayer(nn.Module):
     def __init__(self, embed_dim : int, dropout : float, d_ffn : int = 0) -> None:
-        super(PositionWiseFullyConnectedFeedForwardSubLayer, self).__init__()
+        super().__init__()
         self.embed_dim = embed_dim
         self.dropout = dropout
         if d_ffn == 0: # de manière générale, d_ffn vaut 4 * embed_dim
@@ -98,7 +98,7 @@ class PositionWiseFullyConnectedFeedForwardSubLayer(nn.Module):
 
 class Decoder(nn.Module):
     def __init__(self, embed_dim : int = 768, num_heads : int = 12 , num_layers : int = 6, dropout : float = 0.1, encoder_output : torch.Tensor = torch.Tensor()) -> None:
-        super(Decoder, self).__init__()
+        super().__init__()
         self.embed_dim = embed_dim
         self.num_heads = num_heads
         self.num_layers = num_layers
@@ -114,7 +114,7 @@ class Decoder(nn.Module):
     
 class DecoderLayer(nn.Module):
     def __init__(self, embed_dim : int, num_heads : int, dropout : float) -> None:
-        super(DecoderLayer, self).__init__()
+        super().__init__()
         self.embed_dim = embed_dim
         self.num_heads = num_heads
         self.dropout = dropout
