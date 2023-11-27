@@ -7,7 +7,7 @@ import os
 
 class Oscar():
     
-    def __init__(self, language="fr", split="train", init_tokenizer=False):
+    def __init__(self, language="fr", split="train", init_tokenizer=True):
         """ initialization of  the object Oscar with the language and the split
         charge the dataset with the language and the split """
         self.language = language
@@ -16,17 +16,23 @@ class Oscar():
                         use_auth_token="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", # required
                         language=language,
                         split=split) # optional, but the dataset only has a train split
-        
+        self.tokenizer = None
+
         if init_tokenizer:
             self.init_tokenizer()
 
     # return the element at the index of the dataset
     def __getitem__(self, index: int) -> Any:
-        return self.dataset[index]
+        if self.tokenizer is None:
+            raise Exception("You must initialize the tokenizer before tokenizing the dataset.")
+        return self.tokenize_text(self.dataset[index]["text"])
     
     # return the length of the dataset
     def __len__(self) -> int:
         return len(self.dataset)
+
+    def get_item(self, index: int) -> Any:
+        return self.dataset[index]
 
     # return a random sample from the dataset
     def get_random_sample(self) -> Any:
@@ -70,8 +76,9 @@ class Oscar():
     
     def get_vocab(self) -> Any:
         return self.vocab
-
-
+    
+    def get_vocab_size(self) -> int:
+        return len(self.vocab)
 
     # tokenize the text with the WWM method 
     """     def tokenize_text(self, text: str) -> Any:
