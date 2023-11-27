@@ -9,9 +9,9 @@ from typing import Tuple, List
 
 
 class Transformer(nn.Module):
-    def __init__(self, dictionnary: List[str], d_model : int = 768, num_heads : int = 12, num_layers : int = 6, dropout : float = 0.1) -> None:
+    def __init__(self, dictionary: List[str], d_model : int = 768, num_heads : int = 12, num_layers : int = 6, dropout : float = 0.1) -> None:
         super().__init__()
-        self.dictionnary = dictionnary
+        self.dictionary = dictionnary
         self.d_model = d_model
         self.num_heads = num_heads
         self.num_layers = num_layers
@@ -19,10 +19,13 @@ class Transformer(nn.Module):
         self.positional_encoding = PositionalEncoding(d_model = self.d_model)
         self.encoder = Encoder(d_model = self.d_model, num_heads = self.num_heads, num_layers = self.num_layers, dropout = self.dropout)
         self.decoder = Decoder(d_model = self.d_model, num_heads = self.num_heads, num_layers = self.num_layers, dropout = self.dropout)
-        self.linear = nn.Linear(in_features = self.d_model, out_features = len(self.dictionnary)) 
+        self.linear = nn.Linear(in_features = self.d_model, out_features = len(self.dictionary)) 
         
 
-    def forward(self, input : torch.Tensor, output_encoding : torch.Tensor) -> torch.Tensor:
+    def forward(self, input : List[str], output_encoding : torch.Tensor) -> torch.Tensor:
+        # Je suppose que la tokenisation est déjà faite (input : List[str])
+        embedded_input = torch.tensor([self.dictionary.index(word) if word in self.dictionary else -1 for word in input], dtype=torch.long)
+        encoded_input = self.positional_encoding(embedded_input)
         encoded_input = self.positional_encoding(input)
         y = self.encoder(encoded_input)
         x = self.decoder(y, output_encoding)
