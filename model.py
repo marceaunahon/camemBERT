@@ -2,11 +2,6 @@ from torch import nn
 import torch
 from typing import Tuple, List
 
-# tout ça c'est le premier paragraphe de la partie 3.1 de l'article que je vous ai envoyé sur whatsapp
-# mais il manque quand mm des trucs
-
-#Je suis pas trop sur, surtout pour les forwards
-
 
 class Transformer(nn.Module):
     def __init__(self, dictionary: List[str], d_model : int = 768, num_heads : int = 12, num_layers : int = 6, dropout : float = 0.1) -> None:
@@ -26,7 +21,6 @@ class Transformer(nn.Module):
         # Je suppose que la tokenisation est déjà faite (input : List[str])
         embedded_input = torch.tensor([self.dictionary.index(word) if word in self.dictionary else -1 for word in input], dtype=torch.long)
         encoded_input = self.positional_encoding(embedded_input)
-        encoded_input = self.positional_encoding(input)
         y = self.encoder(encoded_input)
         x = self.decoder(y, output_encoding)
         x = self.linear(x)
