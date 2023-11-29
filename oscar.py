@@ -6,81 +6,226 @@ import os
 
 
 class Oscar():
-    
+
     def __init__(self, language="fr", split="train", init_tokenizer=True):
         """ initialization of  the object Oscar with the language and the split
-        charge the dataset with the language and the split """
+        charge the dataset with the language and the split
+
+        Args:
+            language (str, optional): language of the dataset. Defaults to 'fr'.
+            split (str, optional): split of the dataset. Defaults to 'train'.
+
+        Raises:
+            Exception: if the split is not in ['train', 'test', 'validation']
+
+        Returns:
+            None
+        """
         self.language = language
         self.split = split
         self.dataset = load_dataset("nthngdy/oscar-mini",
-                        use_auth_token="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", # required
-                        language=language,
-                        split=split) # optional, but the dataset only has a train split
+                                    use_auth_token="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",  # required
+                                    language=language,
+                                    split=split)  # optional, but the dataset only has a train split
         self.tokenizer = None
 
+        # initialize the tokenizer
         if init_tokenizer:
             self.init_tokenizer()
 
     # return the element at the index of the dataset
     def __getitem__(self, index: int) -> Any:
+        """
+        Get the element at the index of the dataset
+
+        Args:
+            index (int): index of the element
+
+        Returns:
+            tokenized_text_ids (list): ids tokenized text
+        """
+        # check if the tokenizer has been initialized
         if self.tokenizer is None:
-            raise Exception("You must initialize the tokenizer before tokenizing the dataset.")
-        return self.tokenize_text(self.dataset[index]["text"])
-    
+            raise Exception(
+                "You must initialize the tokenizer before tokenizing the dataset.")
+        # tokenize the text
+        tokenized_text = self.tokenize_text(self.dataset[index]["text"])
+        return self.tokens_to_ids(tokenized_text)
+
     # return the length of the dataset
     def __len__(self) -> int:
+        """
+        Get the length of the dataset
+
+        Returns:
+            length (int): length of the dataset
+        """
         return len(self.dataset)
 
     def get_item(self, index: int) -> Any:
+        """
+        Get the text element at the index of the dataset TOKENIZED
+
+        Args:
+            index (int): index of the element
+
+        Returns:
+            tokenized_text (list): str list of the tokenized text of the element
+        """
+        return self.tokenize_text(self.dataset[index]["text"])
+    
+    def get_raw_text(self, index: int) -> Any:
+        """
+        Get the raw text element at the index of the dataset (without tokenization)
+
+        Args:
+            index (int): index of the element
+
+        Returns:
+            element (tuple): {id: id of the element, text: text of the element}
+        """
         return self.dataset[index]
 
-    # return a random sample from the dataset
+    #  return a random sample from the dataset
     def get_random_sample(self) -> Any:
+        """
+        Get a random sample from the dataset
+
+        Returns:
+            random_sample (tuple): {id: id of the element, text: text of the element}
+        """
         return random.choice(self.dataset)
-    
+
     # search the dataset with a keyword and return the results as a list
     def search_by_keyword(self, keyword: str) -> Any:
-        # Use a list comprehension to filter examples
-        results = [example for example in self.dataset if keyword in example["text"]]
+        """
+        Search the dataset with a keyword and return the results as a list
 
+        Args:
+            keyword (str): keyword to search
+
+        Returns:
+            results (list): list of the results
+        """
+        # Use a list comprehension to filter examples
+        results = [
+            example for example in self.dataset if keyword in example["text"]]
         return results
 
     def write_to_file(self, filename):
+        """
+        Write the dataset to a texte file (used to train the tokenizer)
+
+        Args:
+            filename (str): name of the file to write
+
+        Returns:
+            None        
+        """
+        # Write the dataset to a texte file (used to train the tokenizer)
         with open(filename, 'w', encoding='utf-8') as f:
             for example in self.dataset:
                 f.write(example["text"] + '\n')
 
     def init_tokenizer(self, vocab_size=32000, txt_file="Tokenization/oscar_text.txt", model_prefix="Tokenization/oscar_tokenizer"):
-        # check if the file exists
+        """
+        Initialize the tokenizer
+
+        Args:
+            vocab_size (int, optional): size of the vocabulary. Defaults to 32000.
+            txt_file (str, optional): name of the file to write. Defaults to "Tokenization/oscar_text.txt".
+            model_prefix (str, optional): name of the model. Defaults to "Tokenization/oscar_tokenizer".
+
+        Returns:
+            None
+        """
+
+        #  check if the file exists
         if not os.path.exists(txt_file):
+            # if not create it and write the dataset in it
             print(f"Creating file {txt_file}...")
             self.write_to_file(txt_file)
             print(f"File {txt_file} has been created.")
         else:
             print(f"File {txt_file} found.")
 
-        # check if the model exists
+        #  check if the model already exists
         if not os.path.exists(f'{model_prefix}.model'):
             print(f"Creating model {model_prefix}...")
-            # Train the SentencePiece model
-            spm.SentencePieceTrainer.train(f'--input={txt_file} --model_prefix={model_prefix} --vocab_size={vocab_size}')
+            # if not train the model with the file and the set vocabulary size
+            spm.SentencePieceTrainer.train(
+                f'--input={txt_file} --model_prefix={model_prefix} --vocab_size={vocab_size}')
 
-        # Load the model
+        # Load the trained model
         self.tokenizer = spm.SentencePieceProcessor()
         self.tokenizer.load(f'{model_prefix}.model')
 
-        self.vocab = {self.tokenizer.id_to_piece(id): id for id in range(self.tokenizer.get_piece_size())}
+        # create the vocabulary
+        self.vocab = {self.tokenizer.id_to_piece(
+            id): id for id in range(self.tokenizer.get_piece_size())}
 
     def tokenize_text(self, text: str) -> Any:
-        return self.tokenizer.encode_as_pieces(text)
-    
+        """
+        Tokenize a text
+
+        Args:
+            text (str): text to tokenize
+
+        Returns:
+            tokenized_text (list): str list of the tokens
+        """
+        # use the tokenizer to tokenize the text
+        tokenized_text = self.tokenizer.encode_as_pieces(text)
+        #  add the special tokens at the beginning and the end of the sentence
+        tokenized_text = ["<s>"] + tokenized_text + ["</s>"]
+
+        return tokenized_text
+
+    def tokens_to_ids(self, tokens: list) -> Any:
+        """
+        Convert the tokens to their ids in the vocabulary
+
+        Args:
+            tokens (list): str list of tokens
+
+        Returns:
+            ids (list): int list of tokens ids
+        """
+        #  convert the tokens to their ids in the vocabulary
+        return [self.vocab[token] for token in tokens]
+
+    def ids_to_tokens(self, ids: list) -> Any:
+        """
+        Convert the ids to their tokens in the vocabulary
+
+        Args:
+            ids (list): int list of tokens ids
+
+        Returns:
+            tokens (list): str list of tokens
+        """
+        #  convert the ids to their tokens in the vocabulary
+        return [self.tokenizer.id_to_piece(id) for id in ids]
+
     def get_vocab(self) -> Any:
+        """
+        Get the vocabulary of the tokenizer
+
+        Returns:
+            vocab (dict): vocabulary of the tokenizer
+        """
         return self.vocab
-    
+
     def get_vocab_size(self) -> int:
+        """
+        Get the size of the vocabulary of the tokenizer
+
+        Returns:
+            size (int): size of the vocabulary of the tokenizer
+        """
         return len(self.vocab)
 
-    # tokenize the text with the WWM method 
+    # tokenize the text with the WWM method
     """     def tokenize_text(self, text: str) -> Any:
         # Tokenize the sentence
         words = re.findall(r'\b\w+\b', text)
@@ -124,5 +269,3 @@ class Oscar():
             vocab.update(sentence)
 
         return vocab """
-    
-
