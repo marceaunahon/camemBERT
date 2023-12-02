@@ -23,8 +23,9 @@ class Transformer(nn.Module):
 
     def forward(self, input : List[str], output_encoding : torch.Tensor) -> torch.Tensor:
         # Je suppose que la tokenisation est déjà faite (input : List[str])
-        embedded_input = torch.tensor([self.dictionary.index(word) if word in self.dictionary else -1 for word in input], dtype=torch.long)
-        encoded_input = self.positional_encoding(embedded_input)
+        #embedded_input = torch.tensor([self.dictionary.index(word) if word in self.dictionary else -1 for word in input], dtype=torch.long)
+        #encoded_input = self.positional_encoding(embedded_input)
+        encoded_input = self.positional_encoding(input)
         y = self.encoder(encoded_input)
         x = self.decoder(y, output_encoding)
         x = self.linear(x)
@@ -123,14 +124,13 @@ class PositionWiseFullyConnectedFeedForwardSubLayer(nn.Module):
     
 
 class Decoder(nn.Module):
-    def __init__(self, d_model : int, num_heads : int, num_layers : int, d_ffn : int, dropout : float, encoder_output : torch.Tensor) -> None:
+    def __init__(self, d_model : int, num_heads : int, num_layers : int, d_ffn : int, dropout : float) -> None:
         super().__init__()
         self.d_model = d_model
         self.num_heads = num_heads
         self.num_layers = num_layers
         self.d_ffn = d_ffn
         self.dropout = dropout
-        self.encoder_output = encoder_output
         self.decoder_layers = nn.ModuleList([DecoderLayer(self.d_model, self.num_heads, self.d_ffn, self.dropout) for _ in range(num_layers)])
 
     def forward(self, encoder_ouptut : torch.Tensor, output_embedding : torch.Tensor) -> torch.Tensor:
