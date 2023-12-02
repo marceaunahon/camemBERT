@@ -4,14 +4,14 @@ from typing import Tuple, List
 
 
 class Transformer(nn.Module):
-    def __init__(self, dictionary: List[str], d_model : int = 768, num_heads : int = 12, num_layers : int = 6, dropout : float = 0.1) -> None:
+    def __init__(self, dictionary: List[str], max_seq_len : int=512, d_model : int = 768, num_heads : int = 12, num_layers : int = 6, dropout : float = 0.1) -> None:
         super().__init__()
         self.dictionary = dictionary
         self.d_model = d_model
         self.num_heads = num_heads
         self.num_layers = num_layers
         self.dropout = dropout
-        self.positional_encoding = PositionalEncoding(d_model = self.d_model)
+        self.positional_encoding = PositionalEncoding(d_model = self.d_model, max_seq_len = max_seq_len)
         self.encoder = Encoder(d_model = self.d_model, num_heads = self.num_heads, num_layers = self.num_layers, dropout = self.dropout)
         self.decoder = Decoder(d_model = self.d_model, num_heads = self.num_heads, num_layers = self.num_layers, dropout = self.dropout)
         self.linear = nn.Linear(in_features = self.d_model, out_features = len(self.dictionary)) 
@@ -28,7 +28,7 @@ class Transformer(nn.Module):
         return x
 
 class PositionalEncoding(nn.Module):
-    def __init__(self, d_model:int=768, max_seq_len : int=100):
+    def __init__(self, d_model:int=768, max_seq_len : int=512):
         super().__init__()
         self.embeding = nn.Embedding(max_seq_len, d_model)
         self.d_model = d_model

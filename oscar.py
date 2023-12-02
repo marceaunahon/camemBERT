@@ -7,7 +7,7 @@ import os
 
 class Oscar():
 
-    def __init__(self, language="fr", split="train", init_tokenizer=True):
+    def __init__(self, language="fr", split="train", init_tokenizer=True, padding=True, max_length=512):
         """ initialization of  the object Oscar with the language and the split
         charge the dataset with the language and the split
 
@@ -23,6 +23,8 @@ class Oscar():
         """
         self.language = language
         self.split = split
+        self.padding = padding
+        self.max_length = max_length
         self.dataset = load_dataset("nthngdy/oscar-mini",
                                     use_auth_token="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",  # required
                                     language=language,
@@ -154,7 +156,7 @@ class Oscar():
             print(f"Creating model {model_prefix}...")
             # if not train the model with the file and the set vocabulary size
             spm.SentencePieceTrainer.train(
-                f'--input={txt_file} --model_prefix={model_prefix} --vocab_size={vocab_size}')
+                f'--input={txt_file} --model_prefix={model_prefix} --vocab_size={vocab_size} --user_defined_symbols=<pad>')
 
         # Load the trained model
         self.tokenizer = spm.SentencePieceProcessor()
@@ -178,9 +180,15 @@ class Oscar():
         tokenized_text = self.tokenizer.encode_as_pieces(text)
         #  add the special tokens at the beginning and the end of the sentence
         tokenized_text = ["<s>"] + tokenized_text + ["</s>"]
-
+        if self.padding:
+            if len(tokenized_text) > self.max_length:
+                #  if the sentence is too long, cut it
+                tokenized_text = tokenized_text[:self.max_length]
+            #  pad the sentence if it is too short
+            else:
+                tokenized_text += ["<pad>"] * (self.max_length - len(tokenized_text))
         return tokenized_text
-
+    
     def tokens_to_ids(self, tokens: list) -> Any:
         """
         Convert the tokens to their ids in the vocabulary
@@ -192,7 +200,7 @@ class Oscar():
             ids (list): int list of tokens ids
         """
         #  convert the tokens to their ids in the vocabulary
-        return [self.vocab[token] for token in tokens]
+        return [self.vocab[token] if token in self.vocab else self.vocab["<unk>"] for token in tokens]
 
     def ids_to_tokens(self, ids: list) -> Any:
         """
