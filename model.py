@@ -34,13 +34,13 @@ class Transformer(nn.Module):
 class PositionalEncoding(nn.Module):
     def __init__(self, d_model:int=768, max_seq_len : int=512):
         super().__init__()
-        self.embeding = nn.Embedding(max_seq_len, d_model)
+        self.embedding = nn.Embedding(max_seq_len, d_model)
         self.d_model = d_model
         self.max_seq_len = max_seq_len
         #self.register_buffer('positional_encoding', self._get_positional_encoding())
     
     def forward(self, x : torch.Tensor) -> torch.Tensor:
-        embed_x = self.embeding(x)
+        embed_x = self.embedding(x)
 
         even_i=torch.arange(0, self.d_model, 2).float()
         denominator=torch.pow(10000, even_i/self.d_model)
@@ -89,20 +89,17 @@ class EncoderLayer(nn.Module):
         return x
    
 class MultiHeadAttentionSubLayer(nn.Module):
-    def __init__(self, d_model : int, num_heads : int, dropout : float) -> None:
+    def __init__(self, d_model : int, num_heads : int) -> None:
         super().__init__()
         self.d_model = d_model
         self.num_heads = num_heads
-        self.dropout = dropout
         self.multihead_attention = nn.MultiheadAttention(embed_dim = self.d_model, num_heads = self.num_heads)
         self.layer_norm = nn.LayerNorm(self.d_model)
-        self.dropout_layer = nn.Dropout(self.dropout)
 
     #Ducoup la faut voir ce que c'est query, key et value, c'est trop bien copilot autocompile mes doutes il est trop fort
     def forward(self, query : torch.Tensor, key : torch.Tensor, value : torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]: 
         attn_output, attn_output_weights = self.multihead_attention(query, key, value) 
-        attn_output = self.layer_norm(query + attn_output) 
-        attn_output = self.dropout_layer(attn_output)
+        attn_output = self.layer_norm(query + attn_output)
         return attn_output, attn_output_weights
 
 class PositionWiseFullyConnectedFeedForwardSubLayer(nn.Module):
@@ -150,8 +147,8 @@ class DecoderLayer(nn.Module):
         self.num_heads = num_heads
         self.dropout = dropout
         self.d_ffn = d_ffn
-        self.mask_multihead_attention_layer = MultiHeadAttentionSubLayer(d_model = self.d_model, num_heads = self.num_heads, dropout = self.dropout) #voir la diff entre les deux attention
-        self.multihead_attention_layer = MultiHeadAttentionSubLayer(d_model = self.d_model, num_heads = self.num_heads, dropout = self.dropout)
+        self.mask_multihead_attention_layer = MultiHeadAttentionSubLayer(d_model = self.d_model, num_heads = self.num_heads) #voir la diff entre les deux attention
+        self.multihead_attention_layer = MultiHeadAttentionSubLayer(d_model = self.d_model, num_heads = self.num_heads)
         self.position_wise_fully_connected_feed_forward_layer = PositionWiseFullyConnectedFeedForwardSubLayer(d_model = self.d_model, d_ffn = d_ffn, dropout = self.dropout)
 
     def forward(self, encoder_output : torch.Tensor, output_embedding : torch.Tensor) -> torch.Tensor:
