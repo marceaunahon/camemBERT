@@ -89,11 +89,12 @@ class EncoderLayer(nn.Module):
         return x
    
 class MultiHeadAttentionSubLayer(nn.Module):
-    def __init__(self, d_model : int, num_heads : int) -> None:
+    def __init__(self, d_model : int, num_heads : int, dropout : float) -> None:
         super().__init__()
         self.d_model = d_model
         self.num_heads = num_heads
-        self.multihead_attention = nn.MultiheadAttention(embed_dim = self.d_model, num_heads = self.num_heads)
+        self.dropout = dropout
+        self.multihead_attention = nn.MultiheadAttention(embed_dim = self.d_model, num_heads = self.num_heads, dropout = self.dropout)
         self.layer_norm = nn.LayerNorm(self.d_model)
 
     #Ducoup la faut voir ce que c'est query, key et value, c'est trop bien copilot autocompile mes doutes il est trop fort
@@ -147,8 +148,8 @@ class DecoderLayer(nn.Module):
         self.num_heads = num_heads
         self.dropout = dropout
         self.d_ffn = d_ffn
-        self.mask_multihead_attention_layer = MultiHeadAttentionSubLayer(d_model = self.d_model, num_heads = self.num_heads) #voir la diff entre les deux attention
-        self.multihead_attention_layer = MultiHeadAttentionSubLayer(d_model = self.d_model, num_heads = self.num_heads)
+        self.mask_multihead_attention_layer = MultiHeadAttentionSubLayer(d_model = self.d_model, num_heads = self.num_heads, dropout = self.dropout) #voir la diff entre les deux attention
+        self.multihead_attention_layer = MultiHeadAttentionSubLayer(d_model = self.d_model, num_heads = self.num_heads, dropout = self.dropout)
         self.position_wise_fully_connected_feed_forward_layer = PositionWiseFullyConnectedFeedForwardSubLayer(d_model = self.d_model, d_ffn = d_ffn, dropout = self.dropout)
 
     def forward(self, encoder_output : torch.Tensor, output_embedding : torch.Tensor) -> torch.Tensor:
