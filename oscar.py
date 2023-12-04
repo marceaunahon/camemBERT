@@ -7,7 +7,7 @@ import os
 
 class Oscar():
 
-    def __init__(self, language="fr", split="train", init_tokenizer=True, padding=True, max_length=512):
+    def __init__(self, language="fr", split="train", init_tokenizer=True, padding=True, max_length=512, WMW=True, masked_ratio=0.15, random_ratio=0.1, keep_ratio=0.1):
         """ initialization of  the object Oscar with the language and the split
         charge the dataset with the language and the split
 
@@ -25,6 +25,10 @@ class Oscar():
         self.split = split
         self.padding = padding
         self.max_length = max_length
+        self.WMW = WMW
+        self.masked_ratio = masked_ratio
+        self.random_ratio = random_ratio
+        self.keep_ratio = keep_ratio
         self.dataset = load_dataset("nthngdy/oscar-mini",
                                     use_auth_token="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",  # required
                                     language=language,
@@ -35,10 +39,9 @@ class Oscar():
         if init_tokenizer:
             self.init_tokenizer()
 
-    # return the element at the index of the dataset
     def __getitem__(self, index: int) -> Any:
         """
-        Get the element at the index of the dataset
+        Get the element at the index of the dataset with tokenization and 15% of possible masking (WWM)
 
         Args:
             index (int): index of the element
@@ -52,7 +55,40 @@ class Oscar():
                 "You must initialize the tokenizer before tokenizing the dataset.")
         # tokenize the text
         tokenized_text = self.tokenize_text(self.dataset[index]["text"])
+        # mask 15% of the tokens
+        if self.WMW:
+            tokenized_text = self.mask_text(tokenized_text)
         return self.tokens_to_ids(tokenized_text)
+
+    def mask_text(self, tokens: list) -> Any:
+        """
+        Mask 15% of the tokens
+
+        Args:
+            tokens (list): list of tokens
+
+        Returns:
+            masked_tokens (list): list of masked tokens
+        """
+        #  create a copy of the tokens
+        masked_tokens = tokens.copy()
+        # mask 15% of the tokens
+        for i in range(len(tokens)):
+            if random.random() < self.masked_ratio:
+                # randomize 10% of the 15% of the tokens
+                if random.random() < self.random_ratio:
+                    # replace the token with a random token from the vocabulary
+                    masked_tokens[i] = random.choice(list(self.vocab.items()))[0]
+                elif random.random() < self.keep_ratio:
+                    # keep the token
+                    masked_tokens[i] = tokens[i]
+                else:
+                    # replace the token with <mask>
+                    masked_tokens[i] = "<mask>"
+            else:
+                # keep the token
+                masked_tokens[i] = tokens[i]
+        return masked_tokens
 
     # return the length of the dataset
     def __len__(self) -> int:
@@ -156,7 +192,7 @@ class Oscar():
             print(f"Creating model {model_prefix}...")
             # if not train the model with the file and the set vocabulary size
             spm.SentencePieceTrainer.train(
-                f'--input={txt_file} --model_prefix={model_prefix} --vocab_size={vocab_size} --user_defined_symbols=<pad>')
+                f'--input={txt_file} --model_prefix={model_prefix} --vocab_size={vocab_size} --user_defined_symbols=<pad>,<mask>')
 
         # Load the trained model
         self.tokenizer = spm.SentencePieceProcessor()
