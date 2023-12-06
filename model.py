@@ -1,6 +1,7 @@
 from torch import nn
 import torch
 from typing import Tuple, List
+import numpy as np
 
 
 class Transformer(nn.Module):
@@ -21,12 +22,11 @@ class Transformer(nn.Module):
         self.linear = nn.Linear(in_features = self.d_model, out_features = len(self.dictionary)) 
         
 
-    def forward(self, input : List[str], output_encoding : torch.Tensor) -> torch.Tensor:
-        # Je suppose que la tokenisation est déjà faite (input : List[str])
+    def forward(self, input : torch.Tensor) -> torch.Tensor:
         #embedded_input = torch.tensor([self.dictionary.index(word) if word in self.dictionary else -1 for word in input], dtype=torch.long)
         #encoded_input = self.positional_encoding(embedded_input)
         x = self.encoder(input)
-        x = self.decoder(x, output_encoding)
+        x = self.decoder(x, input)
         x = self.linear(x)
         x = torch.softmax(x, dim = 1)
         return x
@@ -83,8 +83,7 @@ class EncoderLayer(nn.Module):
         self.position_wise_fully_connected_feed_forward_layer = PositionWiseFullyConnectedFeedForwardSubLayer(d_model = self.d_model, dropout = self.dropout, d_ffn = self.d_ffn)
 
     def forward(self, x : torch.Tensor) -> torch.Tensor:
-        attn_output, attn_output_weights = self.multihead_attention_layer(x, x, x) #faut voir ce truc la, automatiquement copilot met x,x,x c bizarre
-        x = attn_output
+        x, _ = self.multihead_attention_layer(x, x, x) #faut voir ce truc la, automatiquement copilot met x,x,x c bizarre
         x = self.position_wise_fully_connected_feed_forward_layer(x)
         return x
    
@@ -99,9 +98,9 @@ class MultiHeadAttentionSubLayer(nn.Module):
 
     #Ducoup la faut voir ce que c'est query, key et value, c'est trop bien copilot autocompile mes doutes il est trop fort
     def forward(self, query : torch.Tensor, key : torch.Tensor, value : torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]: 
-        attn_output, attn_output_weights = self.multihead_attention(query, key, value) 
-        attn_output = self.layer_norm(query + attn_output)
-        return attn_output, attn_output_weights
+        x, _ = self.multihead_attention(query, key, value) 
+        x = self.layer_norm(query + x)
+        return x
 
 class PositionWiseFullyConnectedFeedForwardSubLayer(nn.Module):
     def __init__(self, d_model : int, dropout : float, d_ffn : int) -> None:
@@ -135,10 +134,14 @@ class Decoder(nn.Module):
         self.positional_encoding = PositionalEncoding(d_model = self.d_model, max_seq_len = self.max_seq_len)
         self.decoder_layers = nn.ModuleList([DecoderLayer(self.d_model, self.num_heads, self.d_ffn, self.dropout) for _ in range(num_layers)])
 
-    def forward(self, encoder_ouptut : torch.Tensor, output_embedding : torch.Tensor) -> torch.Tensor:
-        x = torch.Tensor()
-        for decoder_layer in self.decoder_layers:
-            x = decoder_layer(encoder_ouptut, output_embedding)
+    def forward(self, encoder_output : torch.Tensor, decoder_input : torch.Tensor) -> torch.Tensor:
+        outpus = np.zeros(self.d_model)
+        for i in range(self.d_model):
+            decoder_input = decoder_input[i]
+            decoder_input = self.positional_encoding(decoder_input)
+            for decoder_layer in self.decoder_layers:
+                x = decoder_layer(encoder_output, decoder_input)
+            outpus[i] = x
         return x
     
 class DecoderLayer(nn.Module):
@@ -152,11 +155,9 @@ class DecoderLayer(nn.Module):
         self.multihead_attention_layer = MultiHeadAttentionSubLayer(d_model = self.d_model, num_heads = self.num_heads, dropout = self.dropout)
         self.position_wise_fully_connected_feed_forward_layer = PositionWiseFullyConnectedFeedForwardSubLayer(d_model = self.d_model, d_ffn = d_ffn, dropout = self.dropout)
 
-    def forward(self, encoder_output : torch.Tensor, output_embedding : torch.Tensor) -> torch.Tensor:
-        attn_output, attn_output_weights = self.mask_multihead_attention_layer(output_embedding, output_embedding, output_embedding)
-        x = attn_output
-        attn2_output, attn2_output_weights = self.multihead_attention_layer(encoder_output, encoder_output, x)
-        x = attn2_output
+    def forward(self, encoder_output : torch.Tensor, decoder_input : torch.Tensor) -> torch.Tensor:
+        x, _ = self.mask_multihead_attention_layer(decoder_input, decoder_input, decoder_input)
+        x, _ = self.multihead_attention_layer(encoder_output, encoder_output, x)
         x = self.position_wise_fully_connected_feed_forward_layer(x)
         return x
     
