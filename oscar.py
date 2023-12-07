@@ -7,7 +7,7 @@ import os
 
 class Oscar():
 
-    def __init__(self, language="fr", split="train", init_tokenizer=True, padding=True, max_length=512, WMW=True, masked_ratio=0.15, random_ratio=0.1, keep_ratio=0.1):
+    def __init__(self, language="fr", split="train", init_tokenizer=True, padding=True, max_length=512, masked_ratio=0.15, random_ratio=0.1, keep_ratio=0.1):
         """ initialization of  the object Oscar with the language and the split
         charge the dataset with the language and the split
 
@@ -25,7 +25,6 @@ class Oscar():
         self.split = split
         self.padding = padding
         self.max_length = max_length
-        self.WMW = WMW
         self.masked_ratio = masked_ratio
         self.random_ratio = random_ratio
         self.keep_ratio = keep_ratio
@@ -55,10 +54,27 @@ class Oscar():
                 "You must initialize the tokenizer before tokenizing the dataset.")
         # tokenize the text
         tokenized_text = self.tokenize_text(self.dataset[index]["text"])
-        # mask 15% of the tokens
-        if self.WMW:
-            tokenized_text = self.mask_text(tokenized_text)
         return self.tokens_to_ids(tokenized_text)
+    
+    def get_masked_item(self, index: int) -> Any:
+        """
+        Get the element at the index of the dataset with tokenization and 15% of possible masking (WWM)
+
+        Args:
+            index (int): index of the element
+
+        Returns:
+            tokenized_text_ids (list): ids tokenized text
+        """
+        # check if the tokenizer has been initialized
+        if self.tokenizer is None:
+            raise Exception(
+                "You must initialize the tokenizer before tokenizing the dataset.")
+        # tokenize the text
+        tokenized_text = self.tokenize_text(self.dataset[index]["text"])
+        # mask the text
+        masked_text = self.mask_text(tokenized_text)
+        return self.tokens_to_ids(masked_text)
 
     def mask_text(self, tokens: list) -> Any:
         """
