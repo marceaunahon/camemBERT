@@ -135,13 +135,15 @@ class Decoder(nn.Module):
         self.decoder_layers = nn.ModuleList([DecoderLayer(self.d_model, self.num_heads, self.d_ffn, self.dropout) for _ in range(num_layers)])
 
     def forward(self, encoder_output : torch.Tensor, decoder_input : torch.Tensor) -> torch.Tensor:
-        outpus = np.zeros(self.d_model)
+        outputs = np.zeros(self.d_model, dtype=torch.Tensor)
         for i in range(self.d_model):
             decoder_input = decoder_input[i]
             decoder_input = self.positional_encoding(decoder_input)
             for decoder_layer in self.decoder_layers:
                 x = decoder_layer(encoder_output, decoder_input)
-            outpus[i] = x
+            outputs[i] = x
+        x = tuple(outputs)
+        x = torch.stack(x)
         return x
     
 class DecoderLayer(nn.Module):
