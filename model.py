@@ -134,16 +134,16 @@ class Decoder(nn.Module):
         self.positional_encoding = PositionalEncoding(d_model = self.d_model, max_seq_len = self.max_seq_len)
         self.decoder_layers = nn.ModuleList([DecoderLayer(self.d_model, self.num_heads, self.d_ffn, self.dropout) for _ in range(num_layers)])
 
-    def forward(self, encoder_output : torch.Tensor, decoder_input : torch.Tensor) -> torch.Tensor:
+    def forward(self, encoder_output : torch.Tensor, x : torch.Tensor) -> torch.Tensor:
         outputs = np.zeros(self.d_model, dtype=torch.Tensor)
         for i in range(self.d_model):
-            decoder_input = decoder_input[i]
-            decoder_input = self.positional_encoding(decoder_input)
+            x = x[i]
+            x = self.positional_encoding(x)
             for decoder_layer in self.decoder_layers:
-                x = decoder_layer(encoder_output, decoder_input)
+                x = decoder_layer(encoder_output, x)
             outputs[i] = x
-        x = tuple(outputs)
-        x = torch.stack(x)
+        outputs = tuple(outputs)
+        x = torch.stack(outputs)
         return x
     
 class DecoderLayer(nn.Module):
