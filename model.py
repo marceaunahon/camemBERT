@@ -17,8 +17,8 @@ class Transformer(nn.Module):
         else:
             self.d_ffn = d_ffn
         self.dropout = dropout
-        self.encoder = Encoder(max_seq_len = self.max_seq_len, d_model = self.d_model, num_heads = self.num_heads, num_layers = self.num_layers, d_ffn= self.d_ffn, dropout = self.dropout)
-        self.decoder = Decoder(max_seq_len = self.max_seq_len, d_model = self.d_model, num_heads = self.num_heads, num_layers = self.num_layers, d_ffn = self.d_ffn, dropout = self.dropout)
+        self.encoder = Encoder(len(self.dictionary), max_seq_len = self.max_seq_len, d_model = self.d_model, num_heads = self.num_heads, num_layers = self.num_layers, d_ffn= self.d_ffn, dropout = self.dropout)
+        self.decoder = Decoder(len(self.dictionary), max_seq_len = self.max_seq_len, d_model = self.d_model, num_heads = self.num_heads, num_layers = self.num_layers, d_ffn = self.d_ffn, dropout = self.dropout)
         self.linear = nn.Linear(in_features = self.d_model, out_features = len(self.dictionary)) 
         
 
@@ -32,9 +32,9 @@ class Transformer(nn.Module):
         return x
 
 class PositionalEncoding(nn.Module):
-    def __init__(self, d_model:int=768, max_seq_len : int=512):
+    def __init__(self, vocab_size:int, d_model:int=768, max_seq_len : int=512):
         super().__init__()
-        self.embedding = nn.Embedding(max_seq_len, d_model)
+        self.embedding = nn.Embedding(vocab_size, d_model)
         self.d_model = d_model
         self.max_seq_len = max_seq_len
         #self.register_buffer('positional_encoding', self._get_positional_encoding())
@@ -55,7 +55,7 @@ class PositionalEncoding(nn.Module):
         return encoded_x
     
 class Encoder(nn.Module):  
-    def __init__(self, max_seq_len, d_model : int, num_heads : int, num_layers : int, d_ffn : int, dropout : float) -> None:
+    def __init__(self, vocab_size:int, max_seq_len, d_model : int, num_heads : int, num_layers : int, d_ffn : int, dropout : float) -> None:
         super().__init__()
         self.max_seq_len = max_seq_len
         self.d_model = d_model
@@ -63,7 +63,7 @@ class Encoder(nn.Module):
         self.num_layers = num_layers
         self.d_ffn = d_ffn
         self.dropout = dropout
-        self.positional_encoding = PositionalEncoding(d_model = self.d_model, max_seq_len = self.max_seq_len)
+        self.positional_encoding = PositionalEncoding(vocab_size, d_model = self.d_model, max_seq_len = self.max_seq_len)
         self.encoder_layers = nn.ModuleList([EncoderLayer(self.d_model, self.num_heads, self.d_ffn, self.dropout) for _ in range(num_layers)])
 
     def forward(self, x : torch.Tensor) -> torch.Tensor:
@@ -123,7 +123,7 @@ class PositionWiseFullyConnectedFeedForwardSubLayer(nn.Module):
     
 
 class Decoder(nn.Module):
-    def __init__(self, max_seq_len : int, d_model : int, num_heads : int, num_layers : int, d_ffn : int, dropout : float) -> None:
+    def __init__(self, vocab_size, max_seq_len : int, d_model : int, num_heads : int, num_layers : int, d_ffn : int, dropout : float) -> None:
         super().__init__()
         self.max_seq_len = max_seq_len
         self.d_model = d_model
@@ -131,7 +131,7 @@ class Decoder(nn.Module):
         self.num_layers = num_layers
         self.d_ffn = d_ffn
         self.dropout = dropout
-        self.positional_encoding = PositionalEncoding(d_model = self.d_model, max_seq_len = self.max_seq_len)
+        self.positional_encoding = PositionalEncoding(vocab_size, d_model = self.d_model, max_seq_len = self.max_seq_len)
         self.decoder_layers = nn.ModuleList([DecoderLayer(self.d_model, self.num_heads, self.d_ffn, self.dropout) for _ in range(num_layers)])
 
     def forward(self, encoder_output : torch.Tensor, x : torch.Tensor) -> torch.Tensor:
