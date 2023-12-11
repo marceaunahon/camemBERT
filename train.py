@@ -3,17 +3,19 @@ from torch import nn, optim
 from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import StepLR
 from tqdm import tqdm
-
-# Import Oscar class and Transformer model
+from roberta import Roberta
 from oscar import Oscar
 from model import Transformer
+import numpy as np
+
 
 # Initialize Oscar object
 oscar = Oscar(language="fr", split="train")
 
-# Define Transformer model
+# Define Roberta model
 dictionary = list(oscar.get_vocab().keys())
-model = Transformer(dictionary)
+
+model = Transformer(dictionary, num_layers=1) # si on utilise model : faire un controle h et remplacer tous les models.models.parameters() par model.parameters()
 
 # Define your loss function and optimizer
 criterion = nn.CrossEntropyLoss()
@@ -28,31 +30,33 @@ model.to(device)
 
 # Define DataLoader for Oscar dataset
 batch_size = 32  # Change this to whatever fits in our GPU
-dataloader = DataLoader(range(len(oscar)), batch_size=batch_size, shuffle=True)
+dataloader = DataLoader(oscar, batch_size=batch_size, shuffle=True, num_workers=4)
 
 # Training loop
-num_epochs = 5 # Change this too if we want to train for more epochs
+num_epochs = 1 # Change this too if we want to train for more epochs
 best_loss = float('inf')
 patience, trials = 10, 0
+accumulation_steps = 4  # Change this to the number of batches to accumulate gradients
+
+model.train()  # Ensure the model is in training mode
 for epoch in range(num_epochs):
     total_loss = 0
-    model.train()
-    for batch_idx in tqdm(dataloader, desc=f"Epoch {epoch + 1}/{num_epochs}"):
-        # Get batch data from the Oscar dataset
-        inputs = [oscar[i] for i in batch_idx]
-        inputs = torch.tensor(inputs).to(device)
+    optimizer.zero_grad()  # Reset gradients at the beginning of each epoch
+    for batch_idx, (inputs, targets) in enumerate(tqdm(dataloader, desc=f"Epoch {epoch + 1}/{num_epochs}")):
+        inputs, targets = inputs.to(device), targets.to(device)
 
         # Forward pass
-        outputs = model(inputs, output_encoding=None)  # Assuming output_encoding is None for training
-
+        outputs = model(inputs, targets)
+        
         # Calculate loss
-        targets = torch.randint(0, len(dictionary), (batch_size,)).to(device)  # Replace this with correct targets
-        loss = criterion(outputs, targets)
+        loss = criterion(outputs.view(-1, outputs.size(-1)), targets.view(-1))
+        loss = loss / accumulation_steps  # Normalize the loss because it's accumulated for multiple batches
+        loss.backward()  # Backward pass
 
-        # Backward pass and optimization
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+        # Perform optimization step only after accumulating gradients for accumulation_steps batches
+        if (batch_idx + 1) % accumulation_steps == 0 or batch_idx == len(dataloader) - 1:
+            optimizer.step()
+            optimizer.zero_grad()
 
         total_loss += loss.item()
 
@@ -66,7 +70,7 @@ for epoch in range(num_epochs):
     if avg_loss < best_loss:
         trials = 0
         best_loss = avg_loss
-        torch.save(model.state_dict(), "camembert_model.pth")
+        torch.save(model.state_dict(), "roberta_model.pth")
     else:
         trials += 1
         if trials >= patience:
