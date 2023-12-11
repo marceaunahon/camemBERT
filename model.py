@@ -3,15 +3,25 @@ import torch
 from typing import Tuple, List
 import numpy as np
 
+import torch
+from torch import nn, optim
+from torch.utils.data import DataLoader
+from torch.optim.lr_scheduler import StepLR
+from tqdm import tqdm
+from roberta import Roberta
+from oscar import Oscar
+
 
 class Transformer(nn.Module):
-    def __init__(self, dictionary: List[str], max_seq_len : int=512, d_model : int = 768, num_heads : int = 12, num_layers : int = 6, d_ffn : int = 0, dropout : float = 0.1) -> None:
+    def __init__(self, dictionary: List[str], max_seq_len : int=200, d_model : int = 768, num_heads : int = 12, num_layers : int = 6, d_ffn : int = 0, dropout : float = 0.1, start_token_id:int = 1, end_token_id:int=2) -> None:
         super().__init__()
         self.dictionary = dictionary
         self.d_model = d_model
         self.num_heads = num_heads
         self.num_layers = num_layers
         self.max_seq_len = max_seq_len
+        self.start_token = start_token_id
+        self.end_token = end_token_id
         if d_ffn == 0: # de manière générale, d_ffn vaut 4 * d_model
             self.d_ffn = 4 * self.d_model
         else:
@@ -22,14 +32,11 @@ class Transformer(nn.Module):
         self.linear = nn.Linear(in_features = self.d_model, out_features = len(self.dictionary)) 
         
 
-    def forward(self, input : torch.Tensor) -> torch.Tensor:
-        #embedded_input = torch.tensor([self.dictionary.index(word) if word in self.dictionary else -1 for word in input], dtype=torch.long)
-        #encoded_input = self.positional_encoding(embedded_input)
-        x = self.encoder(input)
-        x = self.decoder(x, input)
-        x = self.linear(x)
-        x = torch.softmax(x, dim = 1)
-        return x
+    def forward(self, input : torch.Tensor, label : torch.Tensor) -> torch.Tensor:
+        encoder_output = self.encoder(input)
+        decoder_output = self.decoder(encoder_output, label)
+        output = self.linear(decoder_output)
+        return output
 
 class PositionalEncoding(nn.Module):
     def __init__(self, vocab_size:int, d_model:int=768, max_seq_len : int=512):
@@ -37,20 +44,22 @@ class PositionalEncoding(nn.Module):
         self.embedding = nn.Embedding(vocab_size, d_model)
         self.d_model = d_model
         self.max_seq_len = max_seq_len
-        #self.register_buffer('positional_encoding', self._get_positional_encoding())
-    
-    def forward(self, x : torch.Tensor) -> torch.Tensor:
-        embed_x = self.embedding(x)
 
+        # Precompute positional encodings
         even_i=torch.arange(0, self.d_model, 2).float()
         denominator=torch.pow(10000, even_i/self.d_model)
         position= torch.arange(self.max_seq_len).reshape(self.max_seq_len, 1)
         even_position_encoding=torch.sin(position/denominator)
         odd_position_encoding=torch.cos(position/denominator)
         stacked_position=torch.stack([even_position_encoding, odd_position_encoding], dim=2) 
-        position_encoding=torch.flatten(stacked_position, start_dim=1, end_dim=2)
+        self.position_encoding=torch.flatten(stacked_position, start_dim=1, end_dim=2)
+    
+    def forward(self, x : torch.Tensor) -> torch.Tensor:
+        if isinstance(x, int):
+            x = torch.tensor([x])
         
-        encoded_x = embed_x + position_encoding
+        embed_x = self.embedding(x)
+        encoded_x = embed_x.add_(self.position_encoding)  # In-place addition
 
         return encoded_x
     
@@ -83,7 +92,9 @@ class EncoderLayer(nn.Module):
         self.position_wise_fully_connected_feed_forward_layer = PositionWiseFullyConnectedFeedForwardSubLayer(d_model = self.d_model, dropout = self.dropout, d_ffn = self.d_ffn)
 
     def forward(self, x : torch.Tensor) -> torch.Tensor:
-        x, _ = self.multihead_attention_layer(x, x, x) #faut voir ce truc la, automatiquement copilot met x,x,x c bizarre
+        # x, _ = self.multihead_attention_layer(x, x, x) #faut voir ce truc la, automatiquement copilot met x,x,x c bizarre
+        # x = self.position_wise_fully_connected_feed_forward_layer(x)
+        x = self.multihead_attention_layer(x, x, x) #faut voir ce truc la, automatiquement copilot met x,x,x c bizarre
         x = self.position_wise_fully_connected_feed_forward_layer(x)
         return x
    
@@ -97,8 +108,8 @@ class MultiHeadAttentionSubLayer(nn.Module):
         self.layer_norm = nn.LayerNorm(self.d_model)
 
     #Ducoup la faut voir ce que c'est query, key et value, c'est trop bien copilot autocompile mes doutes il est trop fort
-    def forward(self, query : torch.Tensor, key : torch.Tensor, value : torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]: 
-        x, _ = self.multihead_attention(query, key, value) 
+    def forward(self, query : torch.Tensor, key : torch.Tensor, value : torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        x, _ = self.multihead_attention(query, key, value)
         x = self.layer_norm(query + x)
         return x
 
@@ -134,16 +145,10 @@ class Decoder(nn.Module):
         self.positional_encoding = PositionalEncoding(vocab_size, d_model = self.d_model, max_seq_len = self.max_seq_len)
         self.decoder_layers = nn.ModuleList([DecoderLayer(self.d_model, self.num_heads, self.d_ffn, self.dropout) for _ in range(num_layers)])
 
-    def forward(self, encoder_output : torch.Tensor, x : torch.Tensor) -> torch.Tensor:
-        outputs = np.zeros(self.d_model, dtype=torch.Tensor)
-        for i in range(self.d_model):
-            x = x[i]
-            x = self.positional_encoding(x)
-            for decoder_layer in self.decoder_layers:
-                x = decoder_layer(encoder_output, x)
-            outputs[i] = x
-        outputs = tuple(outputs)
-        x = torch.stack(outputs)
+    def forward(self, encoder_output : torch.Tensor, label : torch.Tensor) -> torch.Tensor:
+        label = self.positional_encoding(label)
+        for decoder_layer in self.decoder_layers:
+            x = decoder_layer(encoder_output, label)
         return x
     
 class DecoderLayer(nn.Module):
@@ -157,13 +162,84 @@ class DecoderLayer(nn.Module):
         self.multihead_attention_layer = MultiHeadAttentionSubLayer(d_model = self.d_model, num_heads = self.num_heads, dropout = self.dropout)
         self.position_wise_fully_connected_feed_forward_layer = PositionWiseFullyConnectedFeedForwardSubLayer(d_model = self.d_model, d_ffn = d_ffn, dropout = self.dropout)
 
-    def forward(self, encoder_output : torch.Tensor, decoder_input : torch.Tensor) -> torch.Tensor:
-        x, _ = self.mask_multihead_attention_layer(decoder_input, decoder_input, decoder_input)
-        x, _ = self.multihead_attention_layer(encoder_output, encoder_output, x)
+    def forward(self, encoder_output, decoder_input):
+    
+        x = self.mask_multihead_attention_layer(decoder_input, decoder_input, decoder_input)
+        x = self.multihead_attention_layer(encoder_output, encoder_output, x)
         x = self.position_wise_fully_connected_feed_forward_layer(x)
         return x
+
     
 if __name__ == "__main__":
-    dictionnary = ["a", "b", "c"]
-    model = Transformer(dictionnary)
-    print(model)
+
+    # Initialize Oscar object
+    oscar = Oscar(language="fr", split="train")
+
+    # Define Roberta model
+    dictionary = list(oscar.get_vocab().keys())
+    # model_name = "roberta-base"  
+    # model = Roberta(model_name) # si on utilise Roberta : faire un controle h et remplacer tous les models.parameters() par model.model.parameters()
+    model = Transformer(dictionary) # si on utilise model : faire un controle h et remplacer tous les models.models.parameters() par model.parameters()
+
+    # Define your loss function and optimizer
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+    # Learning rate scheduler
+    scheduler = StepLR(optimizer, step_size=30, gamma=0.1)
+
+    # Set device (CPU/GPU)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+
+    # Define DataLoader for Oscar dataset
+    batch_size = 32  # Change this to whatever fits in our GPU
+    dataloader = DataLoader(range(len(oscar)), batch_size=batch_size, shuffle=True)
+
+    # Training loop
+    num_epochs = 1 # Change this too if we want to train for more epochs
+    best_loss = float('inf')
+    patience, trials = 10, 0
+    for epoch in range(num_epochs):
+        total_loss = 0
+        model.train()
+        for batch_idx in tqdm(dataloader, desc=f"Epoch {epoch + 1}/{num_epochs}"):
+        # Get batch data from the Oscar dataset
+            # Convert batch_idx to list of inputs
+            batch_idx = batch_idx.tolist()
+            inputs = [oscar.get_masked_item(i) for i in batch_idx]
+            inputs = torch.tensor(inputs).to(device)
+            
+            # Get the correct targets
+            targets = [oscar[i] for i in batch_idx]
+
+
+            # Forward pass
+            outputs = model(inputs)
+            
+            # Calculate loss
+            loss = criterion(outputs, targets)
+
+            # Backward pass and optimization
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            total_loss += loss.item()
+
+        scheduler.step()
+
+        # Print average loss for the epoch
+        avg_loss = total_loss / len(dataloader)
+        print(f"Epoch {epoch + 1}/{num_epochs}, Average Loss: {avg_loss}")
+
+        # Early stopping
+        if avg_loss < best_loss:
+            trials = 0
+            best_loss = avg_loss
+            torch.save(model.state_dict(), "camembert_model.pth")
+        else:
+            trials += 1
+            if trials >= patience:
+                print(f'Early stopping on epoch {epoch}')
+                break

@@ -3,11 +3,11 @@ from datasets import load_dataset
 import random
 import sentencepiece as spm
 import os
-
+import torch
 
 class Oscar():
 
-    def __init__(self, language="fr", split="train", init_tokenizer=True, padding=True, max_length=512, masked_ratio=0.15, random_ratio=0.1, keep_ratio=0.1):
+    def __init__(self, language="fr", split="train", init_tokenizer=True, padding=True, max_length=200, masked_ratio=0.15, random_ratio=0.1, keep_ratio=0.1):
         """ initialization of  the object Oscar with the language and the split
         charge the dataset with the language and the split
 
@@ -54,7 +54,8 @@ class Oscar():
                 "You must initialize the tokenizer before tokenizing the dataset.")
         # tokenize the text
         tokenized_text = self.tokenize_text(self.dataset[index]["text"])
-        return self.tokens_to_ids(tokenized_text)
+        masked_text = self.mask_text(tokenized_text)
+        return torch.tensor(self.tokens_to_ids(masked_text)), torch.tensor(self.tokens_to_ids(tokenized_text))
     
     def get_masked_item(self, index: int) -> Any:
         """
