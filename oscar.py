@@ -54,7 +54,8 @@ class Oscar():
                 "You must initialize the tokenizer before tokenizing the dataset.")
         # tokenize the text
         tokenized_text = self.tokenize_text(self.dataset[index]["text"])
-        return self.tokens_to_ids(tokenized_text)
+        masked_text = self.mask_text(tokenized_text)
+        return [self.tokens_to_ids(masked_text), self.tokens_to_ids(tokenized_text)]
     
     def get_masked_item(self, index: int) -> Any:
         """
