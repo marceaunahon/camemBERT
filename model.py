@@ -94,6 +94,7 @@ class EncoderLayer(nn.Module):
         # x, _ = self.multihead_attention_layer(x, x, x) #faut voir ce truc la, automatiquement copilot met x,x,x c bizarre
         # x = self.position_wise_fully_connected_feed_forward_layer(x)
         print("EncoderLayer")
+        print("x : ", x.shape)
         x = self.multihead_attention_layer(x, x, x) #faut voir ce truc la, automatiquement copilot met x,x,x c bizarre
         x = self.position_wise_fully_connected_feed_forward_layer(x)
         return x
@@ -108,7 +109,8 @@ class MultiHeadAttentionSubLayer(nn.Module):
         self.layer_norm = nn.LayerNorm(self.d_model)
 
     #Ducoup la faut voir ce que c'est query, key et value, c'est trop bien copilot autocompile mes doutes il est trop fort
-    def forward(self, query : torch.Tensor, key : torch.Tensor, value : torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]: 
+    def forward(self, query : torch.Tensor, key : torch.Tensor, value : torch.Tensor) -> torch.Tensor: 
+        print("MultiHeadAttentionSubLayer")
         x, _ = self.multihead_attention(query, key, value) 
         print("len(x) : ", len(x))
         x = self.layer_norm(query + x)
@@ -149,7 +151,7 @@ class Decoder(nn.Module):
     def forward(self, encoder_output : torch.Tensor, x : torch.Tensor) -> torch.Tensor:
         outputs = np.zeros(self.d_model, dtype=torch.Tensor)
         for i in range(self.d_model):
-            x = x[i]
+            #x = x[i]
             x = self.positional_encoding(x)
             for decoder_layer in self.decoder_layers:
                 x = decoder_layer(encoder_output, x)
@@ -171,7 +173,10 @@ class DecoderLayer(nn.Module):
 
     def forward(self, encoder_output : torch.Tensor, decoder_input : torch.Tensor) -> torch.Tensor:
         print("DecoderLayer")
+        print("decoder_input : ", decoder_input.shape)
+        print("encoder_output : ", encoder_output.shape)
         x = self.mask_multihead_attention_layer(decoder_input, decoder_input, decoder_input)
+        print("x : ", x.shape)
         x = self.multihead_attention_layer(encoder_output, encoder_output, x)
         x = self.position_wise_fully_connected_feed_forward_layer(x)
         return x
