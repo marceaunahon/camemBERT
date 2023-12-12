@@ -55,7 +55,16 @@ class Oscar():
         # tokenize the text
         tokenized_text = self.tokenize_text(self.dataset[index]["text"])
         masked_text = self.mask_text(tokenized_text)
-        return torch.tensor(self.tokens_to_ids(masked_text)), torch.tensor(self.tokens_to_ids(tokenized_text))
+        
+        tensor_masked_text = torch.tensor(self.tokens_to_ids(masked_text))
+        tensor_tokenized_text = torch.tensor(self.tokens_to_ids(tokenized_text))
+        
+        return tensor_masked_text, tensor_tokenized_text
+
+        # Set device (CPU/GPU)
+        # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        # return tensor_masked_text.to(device), tensor_tokenized_text.to(device)
+
     
     def get_masked_item(self, index: int) -> Any:
         """
