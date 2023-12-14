@@ -1,14 +1,12 @@
 from torch import nn
 import torch
 from typing import Tuple, List
-import numpy as np
 
 import torch
 from torch import nn, optim
 from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import StepLR
 from tqdm import tqdm
-from roberta import Roberta
 from oscar import Oscar
 
 
@@ -45,6 +43,8 @@ class PositionalEncoding(nn.Module):
         self.d_model = d_model
         self.max_seq_len = max_seq_len
 
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
         # Precompute positional encodings
         even_i=torch.arange(0, self.d_model, 2).float()
         denominator=torch.pow(10000, even_i/self.d_model)
@@ -52,14 +52,17 @@ class PositionalEncoding(nn.Module):
         even_position_encoding=torch.sin(position/denominator)
         odd_position_encoding=torch.cos(position/denominator)
         stacked_position=torch.stack([even_position_encoding, odd_position_encoding], dim=2) 
-        self.position_encoding=torch.flatten(stacked_position, start_dim=1, end_dim=2)
+        self.position_encoding=torch.flatten(stacked_position, start_dim=1, end_dim=2).to(device)
+        
+        
     
     def forward(self, x : torch.Tensor) -> torch.Tensor:
         if isinstance(x, int):
             x = torch.tensor([x])
         
         embed_x = self.embedding(x)
-        encoded_x = embed_x.add_(self.position_encoding)  # In-place addition
+
+        encoded_x = embed_x + self.position_encoding  # In-place addition
 
         return encoded_x
     

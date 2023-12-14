@@ -4,8 +4,10 @@ import random
 import sentencepiece as spm
 import os
 import torch
+from torch.utils.data import Dataset
+import numpy as np
 
-class Oscar():
+class Oscar(Dataset):
 
     def __init__(self, language="fr", split="train", init_tokenizer=True, padding=True, max_length=200, masked_ratio=0.15, random_ratio=0.1, keep_ratio=0.1):
         """ initialization of  the object Oscar with the language and the split
@@ -56,36 +58,49 @@ class Oscar():
         tokenized_text = self.tokenize_text(self.dataset[index]["text"])
         masked_text = self.mask_text(tokenized_text)
         
-        tensor_masked_text = torch.tensor(self.tokens_to_ids(masked_text))
-        tensor_tokenized_text = torch.tensor(self.tokens_to_ids(tokenized_text))
+        tensor_masked_text = torch.tensor(masked_text)
+        tensor_tokenized_text = torch.tensor(tokenized_text)
+
         
         return tensor_masked_text, tensor_tokenized_text
 
-        # Set device (CPU/GPU)
-        # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        # return tensor_masked_text.to(device), tensor_tokenized_text.to(device)
-
-    
-    def get_masked_item(self, index: int) -> Any:
+    def tokenize_text(self, text: str) -> Any:
         """
-        Get the element at the index of the dataset with tokenization and 15% of possible masking (WWM)
+        Tokenize a text
 
         Args:
-            index (int): index of the element
+            text (str): text to tokenize
 
         Returns:
-            tokenized_text_ids (list): ids tokenized text
+            tokenized_text (list): str list of the tokens
         """
-        # check if the tokenizer has been initialized
-        if self.tokenizer is None:
-            raise Exception(
-                "You must initialize the tokenizer before tokenizing the dataset.")
-        # tokenize the text
-        tokenized_text = self.tokenize_text(self.dataset[index]["text"])
-        # mask the text
-        masked_text = self.mask_text(tokenized_text)
-        return self.tokens_to_ids(masked_text)
+        # use the tokenizer to tokenize the text
+        tokenized_text = self.tokenizer.encode_as_ids(text)
+        #  add the special tokens at the beginning and the end of the sentence
+        tokenized_text = [self.start_token_id] + tokenized_text + [self.end_token_id]
+        if self.padding:
+            if len(tokenized_text) > self.max_length:
+                #  if the sentence is too long, cut it
+                tokenized_text = tokenized_text[:self.max_length]
+            #  pad the sentence if it is too short
+            else:
+                tokenized_text += [self.pad_tokken_id] * (self.max_length - len(tokenized_text))
+        return tokenized_text
+    
+    def tokens_to_ids(self, tokens: list) -> Any:
+        """
+        Convert the tokens to their ids in the vocabulary
 
+        Args:
+            tokens (list): str list of tokens
+
+        Returns:
+            ids (list): int list of tokens ids
+        """
+        #  convert the tokens to their ids in the vocabulary
+        return [self.vocab[token] if token in self.vocab else self.vocab["<unk>"] for token in tokens]
+
+    
     def mask_text(self, tokens: list) -> Any:
         """
         Mask 15% of the tokens
@@ -96,21 +111,22 @@ class Oscar():
         Returns:
             masked_tokens (list): list of masked tokens
         """
+        randoms = np.random.randn(3)
         #  create a copy of the tokens
         masked_tokens = tokens.copy()
         # mask 15% of the tokens
         for i in range(len(tokens)):
-            if random.random() < self.masked_ratio:
+            if randoms[0] < self.masked_ratio:
                 # randomize 10% of the 15% of the tokens
-                if random.random() < self.random_ratio:
+                if randoms[1] < self.random_ratio:
                     # replace the token with a random token from the vocabulary
-                    masked_tokens[i] = random.choice(list(self.vocab.items()))[0]
-                elif random.random() < self.keep_ratio:
+                    masked_tokens[i] = random.randint(0, self.get_vocab_size()-1)
+                elif randoms[2] < self.keep_ratio:
                     # keep the token
                     masked_tokens[i] = tokens[i]
                 else:
                     # replace the token with <mask>
-                    masked_tokens[i] = "<mask>"
+                    masked_tokens[i] = self.mask_token_id
             else:
                 # keep the token
                 masked_tokens[i] = tokens[i]
@@ -228,41 +244,11 @@ class Oscar():
         self.vocab = {self.tokenizer.id_to_piece(
             id): id for id in range(self.tokenizer.get_piece_size())}
 
-    def tokenize_text(self, text: str) -> Any:
-        """
-        Tokenize a text
+        self.start_token_id = self.vocab["<s>"]
+        self.end_token_id = self.vocab["</s>"]
+        self.mask_token_id = self.vocab["<mask>"]
+        self.pad_tokken_id = self.vocab["<pad>"]
 
-        Args:
-            text (str): text to tokenize
-
-        Returns:
-            tokenized_text (list): str list of the tokens
-        """
-        # use the tokenizer to tokenize the text
-        tokenized_text = self.tokenizer.encode_as_pieces(text)
-        #  add the special tokens at the beginning and the end of the sentence
-        tokenized_text = ["<s>"] + tokenized_text + ["</s>"]
-        if self.padding:
-            if len(tokenized_text) > self.max_length:
-                #  if the sentence is too long, cut it
-                tokenized_text = tokenized_text[:self.max_length]
-            #  pad the sentence if it is too short
-            else:
-                tokenized_text += ["<pad>"] * (self.max_length - len(tokenized_text))
-        return tokenized_text
-    
-    def tokens_to_ids(self, tokens: list) -> Any:
-        """
-        Convert the tokens to their ids in the vocabulary
-
-        Args:
-            tokens (list): str list of tokens
-
-        Returns:
-            ids (list): int list of tokens ids
-        """
-        #  convert the tokens to their ids in the vocabulary
-        return [self.vocab[token] if token in self.vocab else self.vocab["<unk>"] for token in tokens]
 
     def ids_to_tokens(self, ids: list) -> Any:
         """
@@ -277,6 +263,26 @@ class Oscar():
         #  convert the ids to their tokens in the vocabulary
         return [self.tokenizer.id_to_piece(id) for id in ids]
 
+    def get_masked_item(self, index: int) -> Any:
+        """
+        Get the element at the index of the dataset with tokenization and 15% of possible masking (WWM)
+
+        Args:
+            index (int): index of the element
+
+        Returns:
+            tokenized_text_ids (list): ids tokenized text
+        """
+        # check if the tokenizer has been initialized
+        if self.tokenizer is None:
+            raise Exception(
+                "You must initialize the tokenizer before tokenizing the dataset.")
+        # tokenize the text
+        tokenized_text = self.tokenize_text(self.dataset[index]["text"])
+        # mask the text
+        masked_text = self.mask_text(tokenized_text)
+        return self.tokens_to_ids(masked_text)
+    
     def get_vocab(self) -> Any:
         """
         Get the vocabulary of the tokenizer
