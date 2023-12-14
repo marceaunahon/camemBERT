@@ -111,26 +111,27 @@ class Oscar(Dataset):
         Returns:
             masked_tokens (list): list of masked tokens
         """
-        randoms = np.random.randn(3)
-        #  create a copy of the tokens
+        # Convert tokens to a numpy array for efficient computation
+        tokens = np.array(tokens)
         masked_tokens = tokens.copy()
-        # mask 15% of the tokens
-        for i in range(len(tokens)):
-            if randoms[0] < self.masked_ratio:
-                # randomize 10% of the 15% of the tokens
-                if randoms[1] < self.random_ratio:
-                    # replace the token with a random token from the vocabulary
-                    masked_tokens[i] = random.randint(0, self.get_vocab_size()-1)
-                elif randoms[2] < self.keep_ratio:
-                    # keep the token
-                    masked_tokens[i] = tokens[i]
-                else:
-                    # replace the token with <mask>
-                    masked_tokens[i] = self.mask_token_id
-            else:
-                # keep the token
-                masked_tokens[i] = tokens[i]
-        return masked_tokens
+
+        # Generate random numbers for all tokens at once
+        randoms = np.random.rand(len(tokens), 3)
+
+        # Create masks for the conditions
+        mask_random = randoms[:, 0] < self.masked_ratio
+        mask_keep = randoms[:, 1] < self.keep_ratio
+        mask_replace = ~mask_keep
+
+        # Randomize 10% of the 15% of the tokens
+        mask_randomize = mask_random & (randoms[:, 2] < self.random_ratio)
+        masked_tokens[mask_randomize] = np.random.randint(0, self.get_vocab_size(), size=mask_randomize.sum())
+
+        # Replace the token with <mask>
+        mask_mask = mask_random & mask_replace
+        masked_tokens[mask_mask] = self.mask_token_id
+
+        return masked_tokens.tolist()
 
     # return the length of the dataset
     def __len__(self) -> int:
