@@ -13,7 +13,7 @@ import numpy as np
 
 
 class Transformer(nn.Module):
-    def __init__(self, dictionary: List[str], max_seq_len : int=200, d_model : int = 768, num_heads : int = 8, num_layers : int = 6, d_ffn : int = 0, dropout : float = 0.1, start_token_id:int = 1, end_token_id:int=2) -> None:
+    def __init__(self, dictionary: List[str], max_seq_len : int=512, d_model : int = 768, num_heads : int = 12, num_layers : int = 6, d_ffn : int = 0, dropout : float = 0.1, start_token_id:int = 1, end_token_id:int=2) -> None:
         super().__init__()
         self.dictionary = dictionary
         self.d_model = d_model
