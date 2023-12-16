@@ -120,10 +120,26 @@ def specific_to_general_pos(tag):
 
     return specific_to_general.get(tag, tag)
 
+def evaluate_dependency_parsing(model, tokenizer, sentences, gold_dependencies):
+    correct, total = 0, 0
+
+    for sent, gold_deps in tqdm(zip(sentences, gold_dependencies)):
+        inputs = tokenizer(sent, return_tensors="pt")
+        outputs = model(**inputs)
+        predicted_dependencies = outputs.logits.argmax(dim=-1).squeeze().tolist()
+
+        for pred_dep, gold_dep in zip(predicted_dependencies, gold_deps):
+            if pred_dep == gold_dep:
+                correct += 1
+            total += 1
+
+    accuracy = correct / total
+    return accuracy
+
 if __name__ == "__main__":
 
     model_name = 'qanastek/pos-french-camembert'
-    data_path = 'fr_gsd-ud-dev.conllu'
+    data_path = 'C:/Users/User/Documents/GitHub/camemBERT/Eval/fr_gsd-ud-dev.conllu'
 
     tokenizer = CamembertTokenizer.from_pretrained(model_name)
     model = CamembertForTokenClassification.from_pretrained(model_name)
@@ -131,6 +147,9 @@ if __name__ == "__main__":
 
 
     sentences,all_words_acc, pos_tags_acc, head_indices_acc, dependencies_acc = preprocess_conllu(data_path)
+    
+    #accuracy_depency_parcing = evaluate_dependency_parsing(model, tokenizer, sentences, dependencies_acc)
+    
     same, truth = 0, 0
     for acc_sentence_words,acc_sentence_pos_tags in tqdm(zip(all_words_acc,pos_tags_acc)):
         s,t = 0,0
