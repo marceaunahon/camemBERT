@@ -5,7 +5,6 @@ import sentencepiece as spm
 import os
 import torch
 from torch.utils.data import Dataset
-import numpy as np
 
 
 class Oscar(Dataset):
