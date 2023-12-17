@@ -54,4 +54,8 @@ To load a trained model, go to the last cell of `train_test.ipynb` and change th
 
 Unfortunately, the results of our model were not as expected. During the training process, we observed that the model was converging to a state where it was repeatedly generating the same token up to the maximum sequence length. This indicates that the model might be stuck in a local minimum during the optimization process, or there could be issues with the learning rate or the data.
 
-We are currently investigating this issue and exploring different strategies to improve the model’s performance. This could involve adjusting the hyperparameters, changing the optimization algorithm, or modifying the model architecture. 
+We are currently investigating this issue and exploring different strategies to improve the model’s performance. This could involve adjusting the hyperparameters, changing the optimization algorithm, or modifying the model architecture.
+
+## Miscellaneous
+
+The Ajai branch contains the Transformer model took from the following GitHub repository: https://github.com/ajhalthor/Transformer-Neural-Network/tree/main created by Ajai Halthor. We tried to use this model in case the CamemBERT model did not work, but we were not able to train it due to the lack of time.
