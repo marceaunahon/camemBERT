@@ -20,10 +20,13 @@ The repository is structured as follows:
 - `model.py` contains the code used to create the Transformer model.
 - `train_test.ipynb` contains the code used to train and test the model.
 - `Tokenization/` contains the files used to tokenize the data. (the database in text, the vocabulary and the tokenizer model)
-- `Trained_models/` contains the different models that we trained during the project.
 - `articles/` contains the articles used for the project.
 - `Eval/` contains the scripts and metrics used for evaluating the model on different tasks after fine-tuning.
 - `pos finetuning/` contains the scripts and datasets used for fine-tuning the model for part-of-speech tagging.
+
+## Pre-trained model
+
+Due to the large size of the different pre-trained models, we were not able to upload them to GitHub. However, you can download them from the following link: https://drive.google.com/drive/folders/1GhWMQ-l6-OBgvLrpmDjlEbbmS9ZavDSG?usp=sharing
 
 ## Requirements
 
